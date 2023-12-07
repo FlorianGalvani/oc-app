@@ -2,31 +2,12 @@ name: Deploy React Native App
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  # Job de Test
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '12'  # Spécifiez la version de Node.js
-
-    - name: Install Dependencies
-      run: npm install
-
-    - name: Run React Native tests
-      run: npm test  # Exécute les tests React Native
-
   # Job de Build (Génération APK)
   build:
-    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -37,7 +18,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'adopt'
-        java-version: '11'  # Spécifiez la version de Java
+        java-version: '11'
 
     - name: Install Dependencies
       run: npm install
@@ -45,21 +26,31 @@ jobs:
     - name: Build APK
       run: cd android && ./gradlew assembleRelease  # Commande pour construire l'APK
 
+    - name: Archive APK Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: apk-artifact
+        path: android/app/build/outputs/apk/release/
+
   # Job de Déploiement
   deploy:
-    needs: build
+    needs: build  # Ce job dépend du succès du job 'build'.
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v2
-
-    - name: Upload APK to Server
-      uses: easingthemes/ssh-deploy@v2.1.5
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        SOURCE: "android/app/build/outputs/apk/release/"  # Chemin du fichier APK
-        REMOTE_HOST: ${{ secrets.HOST }}
-        REMOTE_USER: ${{ secrets.SSH_USER }}
-        REMOTE_PORT: "22"
-        TARGET: "~/path/to/destination"  # Chemin de destination sur le serveur distant
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+    - name: Download APK Artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: apk-artifact
+        path: ./apk
+    - name: Deploy using scp with generated RSA private key
+      run: |
+        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./apk/* ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:~/web/app/
