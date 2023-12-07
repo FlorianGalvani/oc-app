@@ -53,4 +53,4 @@ jobs:
         path: ./apk
     - name: Deploy using scp with generated RSA private key
       run: |
-        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./apk/* ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:~/web/app/
+        scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -r ./apk/* ${{ secrets.SSH_USER }}@${{ secrets.HOST }}:~/app
