@@ -3,9 +3,28 @@ name: Deploy React Native App
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
+  # Job de Test
+  test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '12'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run React Native tests
+      run: npm test
   # Job de Build (Génération APK)
   build:
     runs-on: ubuntu-latest
